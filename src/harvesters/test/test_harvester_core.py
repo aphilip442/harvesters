@@ -839,6 +839,24 @@ class TestHarvesterCore(TestHarvester):
         ]
         self._test_conversion('Mono10g40', inputs, outputs)
 
+    def test_mono12g24_pixel_format(self):
+        inputs = [
+            # V0 -> V2
+            bytes([0b00000000, 0b00000000, 0b00000000]),
+            bytes([0b11111111, 0b11111111, 0b11111111]),
+            bytes([0b11111111, 0b11111111, 0b00000000]),
+            bytes([0b00000000, 0b00000000, 0b11111111]),
+            bytes([0b10000000, 0b01000000, 0b00000000]),
+        ]
+        outputs = [
+            [0, 0],
+            [0xfff, 0xfff],
+            [0xff0, 0xff0],
+            [0xf, 0xf],
+            [0x800, 0x400]
+        ]
+        self._test_conversion('Mono12g24', inputs, outputs)
+
     def _test_issue_146_mono_unpacked_multibytes(self):
         names = ['Mono10', 'Mono12']
         maximums = [0x4, 0x10]

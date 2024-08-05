@@ -275,4 +275,5 @@ symbolics = {
 
     # https://github.com/genicam/harvesters/issues/473
     0x4000000f: 'Mono10g40',
+    0x4000001f: 'Mono12g24',
 }

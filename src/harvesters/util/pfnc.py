@@ -138,6 +138,7 @@ mono_packed_location_formats = [
     'Mono10g40',
     'Mono12Packed',
     'Mono12p',
+    'Mono12g24',
     'Coord3D_A10p',
     'Coord3D_B10p',
     'Coord3D_C10p',
@@ -1474,6 +1475,55 @@ class _12p(_PixelFormat):
             ),
             nr_unpacked * up1st.shape[0]
         )
+    
+
+class _12g24(_PixelFormat):
+    def __init__(
+            self, symbolic: str = None, nr_components: float = None,
+            location: _Location = None):
+        #
+        super().__init__(
+            symbolic=symbolic,
+            alignment=_Alignment(
+                unpacked=_DataSize.UINT16, packed=_DataSize.UINT8
+            ),
+            nr_components=nr_components,
+            unit_depth_in_bit=12,
+            location=location
+        )
+
+    def expand(self, array: numpy.ndarray) -> numpy.ndarray:
+        bytes_packed = 3  # chunks of 3 bytes
+        # pixels_unpacked = 2  # give 2 pixels
+        
+        v0, v1, v2 = numpy.reshape(
+            array, (array.shape[0] // bytes_packed, bytes_packed)
+        ).astype(numpy.uint16).T
+
+        """
+        See Figure
+        https://www.1stvision.com/cameras/IDS/IDS-manuals/en/basics-monochrome-pixel-formats.html
+
+        Input:           v2        v1       v0
+        
+        Byte:            B2        B1       B0
+                        |....+....|........|........|
+        Pixel:           p1-0_LSB  p1_MSB   p0_MSB
+
+                        |........+....|........+....|
+        Output:          v1            v0
+        
+        """
+        v0 = numpy.bitwise_or(
+            v0 << 4,
+            numpy.bitwise_and(v2, 0b000000001111)
+        )
+        v1 = numpy.bitwise_or(
+            v1 << 4,
+            numpy.bitwise_and(v2 >> 4, 0b000000001111)
+        )
+
+        return numpy.column_stack((v0, v1)).ravel()
 
 
 class _14p(_PixelFormat):
@@ -1571,6 +1621,16 @@ class _Mono_12p(_12p):
         )
 
 
+class _Mono_12g24(_12g24):
+    def __init__(self, symbolic: str = None):
+        #
+        super().__init__(
+            symbolic=symbolic,
+            nr_components=1.,
+            location = _Location.MONO
+        )
+
+
 class _Mono_14p(_14p):
     def __init__(self, symbolic: str = None):
         #
@@ -1641,6 +1701,12 @@ class Mono12p(_Mono_12p):
     def __init__(self):
         #
         super().__init__(symbolic='Mono12p')
+
+
+class Mono12g24(_Mono_12g24):
+    def __init__(self):
+        #
+        super().__init__(symbolic='Mono12g24')
 
 
 class Mono14p(_Mono_14p):
@@ -3170,6 +3236,7 @@ class Dictionary:
         Mono10c3p32(),
         Mono12Packed(),
         Mono12p(),
+        Mono12g24(),
         Mono14p(),
         Coord3D_A10p(),
         Coord3D_B10p(),
