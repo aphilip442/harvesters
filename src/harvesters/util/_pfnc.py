@@ -272,5 +272,7 @@ symbolics = {
     0x02200101: 'YCbCr2020_422_12_CbYCrY',
     0x02180102: 'YCbCr2020_422_12p',
     0x02180103: 'YCbCr2020_422_12p_CbYCrY',
-}
 
+    # https://github.com/genicam/harvesters/issues/473
+    0x4000000f: 'Mono10g40',
+}

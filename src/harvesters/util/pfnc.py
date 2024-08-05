@@ -135,6 +135,7 @@ mono_packed_location_formats = [
     'Mono4p',
     'Mono10Packed',
     'Mono10p',
+    'Mono10g40',
     'Mono12Packed',
     'Mono12p',
     'Coord3D_A10p',
@@ -1298,6 +1299,81 @@ class _10p(_PixelFormat):
         # Stack the four pixels as columns, i.e. one row per chunk, then
         # flatten to 1D-array
         return numpy.column_stack((v0, v1, v2, v3)).ravel()
+    
+
+class _10g40(_PixelFormat):
+    def __init__(
+            self, symbolic: str = None, nr_components: float = None,
+            location: _Location = None):
+        #
+        super().__init__(
+            symbolic=symbolic,
+            alignment=_Alignment(
+                unpacked=_DataSize.UINT16, packed=_DataSize.UINT8
+            ),
+            nr_components=nr_components,
+            unit_depth_in_bit=10,
+            location=location
+        )
+    
+    def expand(self, array: numpy.ndarray) -> numpy.ndarray:
+        """Expand the Mono10g40 format (litte-endian order), where chunks of 5 bytes give 4 pixels.
+        
+        Parameters
+        ----------
+        array : numpy.ndarray
+            One-dimensional array of datatype uint8 representing the raw byte sequence.
+        
+        Returns
+        -------
+        numpy.ndarray
+            One-dimensional array of datatype uint16 representing the unpacked
+            pixels with  10-bit data (values from 0 to 1023).
+        """
+
+        assert array.dtype == numpy.uint8
+
+        bytes_packed = 5  # chunks of 5 bytes
+        # pixels_unpacked = 4  # give 4 pixels
+
+        # The .T-transpose allows receiving into five named variables v0--v4.
+        v0, v1, v2, v3, v4 = array.reshape(
+            array.size // bytes_packed,
+            bytes_packed
+        ).astype(numpy.uint16).T
+
+        """
+        See Figure
+        https://www.1stvision.com/cameras/IDS/IDS-manuals/en/basics-monochrome-pixel-formats.html
+
+        Input:           v4       v3        v2        v1        v0
+        
+        Byte:            B4          B3       B2       B1       B0
+                        |..+..+..+..|........|........|........|........|
+        Pixel:           p3-0_LSB    p3_MSB   p2_MSB   p1_MSB   p0_MSB
+
+                        |........+..|........+..|........+..|........+..|
+        Output:          v3          v2          v1          v0
+        
+        """
+        v0 = numpy.bitwise_or(
+            v0 << 2,
+            numpy.bitwise_and(v4, 0b0000000011)
+        )
+        v1 = numpy.bitwise_or(
+            v1 << 2,
+            numpy.bitwise_and(v4 >> 2, 0b0000000011)
+        )
+        v2 = numpy.bitwise_or(
+            v2 << 2,
+            numpy.bitwise_and(v4 >> 4, 0b0000000011)
+        )
+        v3 = numpy.bitwise_or(
+            v3 << 2,
+            numpy.bitwise_and(v4 >> 6, 0b0000000011)
+        )
+
+        return numpy.column_stack((v0, v1, v2, v3)).ravel()
 
 
 class _10p32(_PixelFormat):
@@ -1465,6 +1541,16 @@ class _Mono_10p(_10p):
         )
 
 
+class _Mono_10g40(_10g40):
+    def __init__(self, symbolic: str = None):
+        #
+        super().__init__(
+            symbolic=symbolic,
+            nr_components=1.,
+            location=_Location.MONO
+        )
+
+
 class _Mono_10p32(_10p32):
     def __init__(self, symbolic: str = None):
         #
@@ -1525,6 +1611,12 @@ class Mono10p(_Mono_10p):
     def __init__(self):
         #
         super().__init__(symbolic='Mono10p')
+
+
+class Mono10g40(_Mono_10g40):
+    def __init__(self):
+        #
+        super().__init__(symbolic='Mono10g40')
 
 
 class Mono10Packed(_Mono_GroupPacked_10):
@@ -3074,6 +3166,7 @@ class Dictionary:
         # Mono4p(),
         Mono10Packed(),
         Mono10p(),
+        Mono10g40(),
         Mono10c3p32(),
         Mono12Packed(),
         Mono12p(),
